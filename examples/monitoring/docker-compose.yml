@@ -1,0 +1,161 @@
+# ===========================================
+# Monitoring Stack - Grafana + Prometheus
+# Интеграция с Nginx Proxy Manager
+# ===========================================
+#
+# Этот стек настраивает полноценный мониторинг:
+# - Grafana для визуализации
+# - Prometheus для метрик
+# - Node Exporter для метрик хоста
+#
+# В NPM создайте Proxy Hosts:
+# 1. grafana.yourdomain.com → grafana:3000
+# 2. prometheus.yourdomain.com → prometheus:9090 (+ Access List!)
+
+services:
+  # ===========================================
+  # Grafana - визуализация метрик
+  # ===========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      # URL для корректной работы за прокси
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN}
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+      # Безопасность
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      # Отключить регистрацию
+      - GF_USERS_ALLOW_SIGN_UP=false
+      # Настройки SMTP для алертов (опционально)
+      # - GF_SMTP_ENABLED=true
+      # - GF_SMTP_HOST=smtp.gmail.com:587
+      # - GF_SMTP_USER=your@email.com
+      # - GF_SMTP_PASSWORD=your_app_password
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - proxy-network
+      - monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # Prometheus - сбор метрик
+  # ===========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.external-url=https://prometheus.${DOMAIN}'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    networks:
+      - proxy-network  # Для доступа через NPM
+      - monitoring     # Для связи с exporters
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # Node Exporter - метрики хоста
+  # ===========================================
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - monitoring  # Только внутренняя сеть!
+    # Не подключаем к proxy-network - доступ только через Prometheus
+
+  # ===========================================
+  # Alertmanager (опционально)
+  # ===========================================
+  # alertmanager:
+  #   image: prom/alertmanager:latest
+  #   container_name: alertmanager
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+  #     - alertmanager-data:/alertmanager
+  #   networks:
+  #     - proxy-network
+  #     - monitoring
+  #   command:
+  #     - '--config.file=/etc/alertmanager/alertmanager.yml'
+  #     - '--storage.path=/alertmanager'
+
+volumes:
+  grafana-data:
+  prometheus-data:
+  # alertmanager-data:
+
+networks:
+  proxy-network:
+    external: true
+  monitoring:
+    driver: bridge
+
+# ===========================================
+# Необходимые файлы:
+# ===========================================
+#
+# prometheus/prometheus.yml:
+# ---
+# global:
+#   scrape_interval: 15s
+#   evaluation_interval: 15s
+#
+# scrape_configs:
+#   - job_name: 'prometheus'
+#     static_configs:
+#       - targets: ['localhost:9090']
+#
+#   - job_name: 'node-exporter'
+#     static_configs:
+#       - targets: ['node-exporter:9100']
+#
+#   # Добавьте ваши сервисы:
+#   # - job_name: 'profitpay'
+#   #   static_configs:
+#   #     - targets: ['profitpay-api:5000']
+#   #   metrics_path: /metrics
+# ---
+#
+# ===========================================
+# .env файл:
+# ===========================================
+# DOMAIN=yourdomain.com
+# GRAFANA_ADMIN_USER=admin
+# GRAFANA_ADMIN_PASSWORD=your_secure_password
+# ===========================================
+#
+# ВАЖНО: Для Prometheus создайте Access List в NPM,
+# чтобы ограничить доступ только для авторизованных IP!
+# ===========================================
+

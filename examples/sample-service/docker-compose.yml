@@ -1,0 +1,105 @@
+# ===========================================
+# Пример docker-compose.yml для подключения
+# сервиса к Nginx Proxy Manager
+# ===========================================
+#
+# Использование:
+# 1. Скопируйте этот файл в папку вашего проекта
+# 2. Адаптируйте под ваши нужды
+# 3. Запустите: docker compose up -d
+# 4. Добавьте Proxy Host в Nginx Proxy Manager
+
+services:
+  # ===========================================
+  # Ваше приложение
+  # ===========================================
+  app:
+    image: nginx:alpine  # Замените на ваш образ
+    container_name: sample-app  # Используйте это имя в NPM
+    restart: unless-stopped
+    
+    # ⚠️ ВАЖНО: Не пробрасывайте порты наружу!
+    # NPM будет проксировать трафик напрямую через Docker-сеть
+    # ports:
+    #   - "3000:80"  # НЕ НУЖНО!
+    
+    environment:
+      # Пример переменных окружения
+      - NODE_ENV=production
+      # Для ASP.NET Core:
+      # - ASPNETCORE_URLS=http://+:5000
+      # - ASPNETCORE_ENVIRONMENT=Production
+    
+    volumes:
+      # Монтирование ваших файлов/данных
+      - ./public:/usr/share/nginx/html:ro
+    
+    networks:
+      - proxy-network  # Для доступа через NPM
+      - internal       # Для связи с БД
+
+  # ===========================================
+  # База данных (пример с PostgreSQL)
+  # ===========================================
+  database:
+    image: postgres:15-alpine
+    container_name: sample-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=your_secure_password
+      - POSTGRES_DB=appdb
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - internal  # Только внутренняя сеть, не нужен доступ извне
+    # healthcheck для надёжности
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===========================================
+  # Redis / Cache (опционально)
+  # ===========================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: sample-redis
+  #   restart: unless-stopped
+  #   networks:
+  #     - internal
+  #   volumes:
+  #     - redis-data:/data
+
+# ===========================================
+# Volumes для персистентности данных
+# ===========================================
+volumes:
+  db-data:
+  # redis-data:
+
+# ===========================================
+# Сети
+# ===========================================
+networks:
+  # Общая сеть для доступа через Nginx Proxy Manager
+  # Должна быть создана заранее: docker network create proxy-network
+  proxy-network:
+    external: true
+  
+  # Внутренняя сеть для связи app <-> db
+  # Изолирует БД от внешнего доступа
+  internal:
+    driver: bridge
+
+# ===========================================
+# После запуска добавьте Proxy Host в NPM:
+#
+# Domain Names: sample-app.yourdomain.com
+# Forward Hostname: sample-app  (имя контейнера!)
+# Forward Port: 80 (или порт вашего приложения)
+#
+# Включите SSL → Request new SSL Certificate
+# ===========================================
+

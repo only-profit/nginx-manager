@@ -1,0 +1,100 @@
+# ===========================================
+# QuoteFeed - ASP.NET Core + PostgreSQL
+# Интеграция с Nginx Proxy Manager
+# ===========================================
+#
+# Миграция с Caddy:
+# 1. Остановите Caddy
+# 2. Добавьте сервис к proxy-network
+# 3. Запустите: docker compose up -d
+# 4. В NPM создайте Proxy Host:
+#    - Domain: quotefeed.yourdomain.com
+#    - Forward Hostname: quotefeed-api
+#    - Forward Port: 5000
+#    - Включите SSL
+
+services:
+  # ===========================================
+  # API приложение
+  # ===========================================
+  quotefeed-api:
+    image: your-registry/quotefeed-api:latest
+    container_name: quotefeed-api
+    restart: unless-stopped
+    depends_on:
+      quotefeed-db:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_ENVIRONMENT=Production
+      # Connection string к PostgreSQL
+      - ConnectionStrings__DefaultConnection=Host=quotefeed-db;Database=quotefeed;Username=quotefeed;Password=${POSTGRES_PASSWORD}
+      # Другие настройки
+      - Logging__LogLevel__Default=Information
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - proxy-network
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ===========================================
+  # PostgreSQL
+  # ===========================================
+  quotefeed-db:
+    image: postgres:15-alpine
+    container_name: quotefeed-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=quotefeed
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=quotefeed
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quotefeed -d quotefeed"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ===========================================
+  # Redis для кэширования (опционально)
+  # ===========================================
+  quotefeed-redis:
+    image: redis:7-alpine
+    container_name: quotefeed-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  proxy-network:
+    external: true
+  internal:
+    driver: bridge
+
+# ===========================================
+# .env файл:
+# ===========================================
+# POSTGRES_PASSWORD=your_secure_password
+# ===========================================
+
