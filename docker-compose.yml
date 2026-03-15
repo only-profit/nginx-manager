@@ -11,8 +11,8 @@ services:
       - "${HTTP_PORT:-80}:80"
       # HTTPS
       - "${HTTPS_PORT:-443}:443"
-      # Admin Web UI
-      - "${ADMIN_PORT:-81}:81"
+      # Admin Web UI (localhost only, access via SSH tunnel)
+      - "127.0.0.1:${ADMIN_PORT:-81}:81"
     environment:
       # Uncomment to disable IPv6 if needed
       # DISABLE_IPV6: 'true'

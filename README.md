@@ -261,28 +261,22 @@ Caddy можно заменить аналогично:
 
 ### Защита Admin Panel
 
-#### Вариант 1: Закрыть порт 81 через firewall
+По умолчанию порт 81 (Admin UI) привязан к `127.0.0.1` и недоступен извне. Для доступа используйте SSH туннель:
 
 ```bash
-# UFW
-sudo ufw deny 81
-sudo ufw allow from YOUR_IP to any port 81
-
-# iptables
-sudo iptables -A INPUT -p tcp --dport 81 -s YOUR_IP -j ACCEPT
-sudo iptables -A INPUT -p tcp --dport 81 -j DROP
-```
-
-#### Вариант 2: SSH туннель
-
-Измените `ADMIN_PORT=127.0.0.1:81` в `.env`, затем подключайтесь через SSH туннель:
-
-```bash
+# Linux/macOS
 ssh -L 8181:localhost:81 user@your-server
-# Откройте http://localhost:8181
+
+# PowerShell (Windows)
+ssh -L 8181:localhost:81 user@your-server
 ```
 
-#### Вариант 3: Access List в самом NPM
+Затем откройте `http://localhost:8181` в браузере.
+
+> 💡 Если нужен публичный доступ к админке, измените в `.env`:
+> `ADMIN_PORT=81` (без привязки к 127.0.0.1) и защитите порт через firewall или Access List.
+
+#### Дополнительно: Access List в самом NPM
 
 1. Создайте Access List в Admin Panel
 2. Добавьте разрешённые IP адреса
