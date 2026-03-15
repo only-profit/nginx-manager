@@ -49,8 +49,8 @@ sudo cp -r /var/lib/docker/volumes/project_letsencrypt/_data ./backup-letsencryp
 
 | Домен | Upstream (IP:Port) | SSL | Примечания |
 |-------|-------------------|-----|------------|
-| profitpay.example.com | profitpay-api:5000 | Let's Encrypt | ASP.NET Core |
-| quotefeed.example.com | quotefeed-api:5000 | Let's Encrypt | + WebSocket |
+| app.example.com | myapp-api:5000 | Let's Encrypt | ASP.NET Core |
+| api.example.com | backend-api:3000 | Let's Encrypt | + WebSocket |
 | grafana.example.com | grafana:3000 | Let's Encrypt | Ограничить доступ |
 
 ---
@@ -62,8 +62,8 @@ sudo cp -r /var/lib/docker/volumes/project_letsencrypt/_data ./backup-letsencryp
 На том же или новом сервере:
 
 ```bash
-git clone https://github.com/your-repo/server-proxy-manager.git
-cd server-proxy-manager
+git clone https://github.com/only-profit/nginx-manager.git
+cd nginx-manager
 
 # Пока НЕ запускаем, сначала остановим старый nginx
 ```
@@ -93,7 +93,7 @@ networks:
 ### Шаг 3: Остановка старого nginx-certbot
 
 ```bash
-cd /path/to/profitpay  # или другой проект со старым nginx
+cd /path/to/your-project  # проект со старым nginx
 
 # Остановить nginx-certbot
 docker compose stop nginx-certbot
@@ -122,8 +122,8 @@ docker compose up -d
 
 ```bash
 # Подключить уже работающие контейнеры к сети
-docker network connect proxy-network profitpay-api
-docker network connect proxy-network quotefeed-api
+docker network connect proxy-network myapp-api
+docker network connect proxy-network backend-api
 docker network connect proxy-network grafana
 
 # Проверить подключение
@@ -133,7 +133,7 @@ docker network inspect proxy-network
 Или перезапустите сервисы с обновлённым docker-compose:
 
 ```bash
-cd /path/to/profitpay
+cd /path/to/your-project
 docker compose up -d
 ```
 
@@ -149,7 +149,7 @@ docker compose up -d
 2. Вкладка **Details**:
    - **Domain Names:** ваш домен
    - **Scheme:** http
-   - **Forward Hostname/IP:** имя контейнера (например, `profitpay-api`)
+   - **Forward Hostname/IP:** имя контейнера (например, `myapp-api`)
    - **Forward Port:** порт приложения (например, `5000`)
    - ✅ **Block Common Exploits**
    - ✅ **Websockets Support** (если нужно)
@@ -167,13 +167,13 @@ docker compose up -d
 
 ```bash
 # Проверить HTTP → HTTPS редирект
-curl -I http://profitpay.example.com
+curl -I http://app.example.com
 
 # Проверить SSL
-curl -I https://profitpay.example.com
+curl -I https://app.example.com
 
 # Проверить сертификат
-openssl s_client -connect profitpay.example.com:443 -servername profitpay.example.com < /dev/null | openssl x509 -noout -dates
+openssl s_client -connect app.example.com:443 -servername app.example.com < /dev/null | openssl x509 -noout -dates
 ```
 
 ### Шаг 8: Очистка
@@ -200,10 +200,10 @@ docker volume rm project_nginx_config project_letsencrypt
 
 ```bash
 # Проверить, что контейнер в сети
-docker network inspect proxy-network | grep -A5 profitpay-api
+docker network inspect proxy-network | grep -A5 myapp-api
 
 # Подключить если нет
-docker network connect proxy-network profitpay-api
+docker network connect proxy-network myapp-api
 
 # Проверить имя контейнера
 docker ps --format '{{.Names}}'
@@ -215,10 +215,10 @@ docker ps --format '{{.Names}}'
 
 ```bash
 # Проверить DNS
-dig +short profitpay.example.com
+dig +short app.example.com
 
 # Проверить доступность порта 80
-curl -I http://profitpay.example.com/.well-known/acme-challenge/test
+curl -I http://app.example.com/.well-known/acme-challenge/test
 ```
 
 ### Downtime при миграции
@@ -242,22 +242,22 @@ cd /path/to/server-proxy-manager
 docker compose down
 
 # Запустить старый nginx-certbot
-cd /path/to/profitpay
+cd /path/to/your-project
 docker compose up -d nginx-certbot
 ```
 
 ---
 
-## Пример полной миграции ProfitPay
+## Пример полной миграции
 
 ### До (с nginx-certbot)
 
 ```yaml
-# /opt/profitpay/docker-compose.yml
+# /opt/myapp/docker-compose.yml
 services:
-  profitpay-api:
-    image: profitpay-api:latest
-    container_name: profitpay-api
+  myapp-api:
+    image: myapp-api:latest
+    container_name: myapp-api
     ports:
       - "5000:5000"  # Убрать после миграции!
 
@@ -277,19 +277,19 @@ volumes:
 ### После (с NPM)
 
 ```yaml
-# /opt/profitpay/docker-compose.yml
+# /opt/myapp/docker-compose.yml
 services:
-  profitpay-api:
-    image: profitpay-api:latest
-    container_name: profitpay-api
+  myapp-api:
+    image: myapp-api:latest
+    container_name: myapp-api
     # Порты НЕ пробрасываем - доступ только через NPM
     networks:
       - proxy-network
       - internal
 
-  profitpay-db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: profitpay-db
+  myapp-db:
+    image: postgres:16
+    container_name: myapp-db
     networks:
       - internal
 
@@ -300,5 +300,5 @@ networks:
     driver: bridge
 ```
 
-И отдельно Server Proxy Manager в `/opt/server-proxy-manager/`.
+И отдельно Server Proxy Manager в `/opt/nginx-manager/`.
 

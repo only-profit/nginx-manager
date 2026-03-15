@@ -141,9 +141,9 @@ networks:
 #       - targets: ['node-exporter:9100']
 #
 #   # Добавьте ваши сервисы:
-#   # - job_name: 'profitpay'
+#   # - job_name: 'myapp'
 #   #   static_configs:
-#   #     - targets: ['profitpay-api:5000']
+#   #     - targets: ['myapp-api:5000']
 #   #   metrics_path: /metrics
 # ---
 #

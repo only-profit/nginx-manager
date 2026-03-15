@@ -20,8 +20,8 @@
 
 ```bash
 # 1. Клонировать репозиторий
-git clone https://github.com/your-repo/server-proxy-manager.git
-cd server-proxy-manager
+git clone https://github.com/only-profit/nginx-manager.git
+cd nginx-manager
 
 # 2. Сделать скрипт исполняемым
 chmod +x setup.sh
@@ -109,22 +109,22 @@ docker network connect proxy-network container_name
 docker network inspect proxy-network
 ```
 
-### Пример с ProfitPay (ASP.NET Core)
+### Пример с ASP.NET Core приложением
 
 ```yaml
 services:
-  profitpay-api:
-    image: your-registry/profitpay-api:latest
-    container_name: profitpay-api
+  myapp-api:
+    image: your-registry/myapp-api:latest
+    container_name: myapp-api
     environment:
       - ASPNETCORE_URLS=http://+:5000
     networks:
       - proxy-network
       - internal
 
-  profitpay-db:
+  myapp-db:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: profitpay-db
+    container_name: myapp-db
     networks:
       - internal  # БД не нужна в proxy-network
 
@@ -136,8 +136,8 @@ networks:
 ```
 
 В Nginx Proxy Manager:
-- **Domain:** `profitpay.yourdomain.com`
-- **Forward Hostname:** `profitpay-api`
+- **Domain:** `myapp.example.com`
+- **Forward Hostname:** `myapp-api`
 - **Forward Port:** `5000`
 
 ---
@@ -454,8 +454,13 @@ server-proxy-manager/
 ├── letsencrypt/            # SSL сертификаты (создаётся автоматически)
 └── examples/
     ├── add-service.md      # Детальная инструкция добавления сервиса
-    └── sample-service/
-        └── docker-compose.yml  # Пример для подключаемого сервиса
+    ├── migration-from-nginx-certbot.md  # Миграция с nginx-certbot
+    ├── sample-service/
+    │   └── docker-compose.yml  # Пример для подключаемого сервиса
+    └── monitoring/
+        ├── docker-compose.yml     # Стек мониторинга (Grafana + Prometheus)
+        └── prometheus/
+            └── prometheus.yml     # Конфигурация Prometheus
 ```
 
 ---

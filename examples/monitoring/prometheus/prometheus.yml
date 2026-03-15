@@ -48,14 +48,9 @@ scrape_configs:
   # Your applications
   # ===========================================
   # ASP.NET Core apps with prometheus-net:
-  # - job_name: 'profitpay'
+  # - job_name: 'myapp'
   #   static_configs:
-  #     - targets: ['profitpay-api:5000']
-  #   metrics_path: /metrics
-
-  # - job_name: 'quotefeed'
-  #   static_configs:
-  #     - targets: ['quotefeed-api:5000']
+  #     - targets: ['myapp-api:5000']
   #   metrics_path: /metrics
 
   # ===========================================
