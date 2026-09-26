@@ -6,6 +6,7 @@
 # Data directories (created by docker)
 data/
 letsencrypt/
+backups/
 
 # Logs
 *.log

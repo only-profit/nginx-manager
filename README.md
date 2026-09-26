@@ -46,6 +46,7 @@ chmod +x setup.sh
 - [Настройка SSL](#настройка-ssl)
 - [Миграция с существующего nginx](#миграция-с-существующего-nginx)
 - [Безопасность](#безопасность)
+- [Бэкап](#бэкап)
 - [Полезные команды](#полезные-команды)
 - [Troubleshooting](#troubleshooting)
 
@@ -298,6 +299,31 @@ docker compose up -d
 
 ---
 
+## Бэкап
+
+`scripts/backup.sh` складывает в `backups/npm_<дата>.tar.gz` каталог `data/`
+без логов и `letsencrypt/`: proxy hosts, access lists, свои конфиги nginx и
+сертификаты. Базу SQLite скрипт копирует через backup API, поэтому NPM
+останавливать не нужно. Хранятся 14 последних архивов. В архиве приватные
+ключи сертификатов, права на файл — 600.
+
+```bash
+./scripts/backup.sh                 # в ./backups
+./scripts/backup.sh /path/to/dir    # в другой каталог
+```
+
+Нужны `python3` на хосте и запущенный контейнер `nginx-proxy-manager`.
+
+Восстановление:
+
+```bash
+docker compose down
+sudo tar -xzf backups/npm_<дата>.tar.gz -C .
+docker compose up -d
+```
+
+---
+
 ## Полезные команды
 
 ```bash
@@ -443,9 +469,12 @@ server-proxy-manager/
 ├── .env.example            # Шаблон переменных окружения
 ├── .env                    # Ваши настройки (создаётся автоматически)
 ├── setup.sh                # Скрипт установки
+├── scripts/
+│   └── backup.sh           # Бэкап data/ и letsencrypt/
 ├── README.md               # Эта документация
 ├── data/                   # Данные NPM (создаётся автоматически)
 ├── letsencrypt/            # SSL сертификаты (создаётся автоматически)
+├── backups/                # Архивы scripts/backup.sh
 └── examples/
     ├── add-service.md      # Детальная инструкция добавления сервиса
     ├── migration-from-nginx-certbot.md  # Миграция с nginx-certbot
