@@ -283,6 +283,28 @@ ssh -L 8181:localhost:81 user@your-server
 2. Добавьте разрешённые IP адреса
 3. Примените к Proxy Host для админки
 
+### Свои конфиги NPM (`custom/`)
+
+NPM подключает файлы из `data/nginx/custom/` в свои конфиги, например
+`server_proxy.conf` — в блок `server` каждого proxy host. Источник этих
+файлов — каталог `custom/` репозитория, на сервер они ставятся скриптом:
+
+```bash
+./scripts/apply-custom.sh
+```
+
+Скрипт копирует `custom/*.conf` в контейнер, проверяет конфиг (`nginx -t`)
+и перезагружает nginx; если проверка не прошла, возвращает прежние файлы.
+
+`custom/server_proxy.conf`:
+
+- доверяет `X-Real-IP` только от приватных сетей. Глобальный список NPM
+  доверяет ещё скачанным диапазонам Cloudflare и CloudFront, и запрос через
+  них мог бы сам выбрать адрес клиента;
+- стирает присланные клиентом заголовки `X-authentik-*`: их выставляют
+  только SSO-сниппеты gatehouse, а custom location без `auth_request`
+  пропустил бы чужую копию в приложение.
+
 ### Смена пароля по умолчанию
 
 1. Войдите с `admin@example.com` / `changeme`
@@ -469,7 +491,10 @@ server-proxy-manager/
 ├── .env.example            # Шаблон переменных окружения
 ├── .env                    # Ваши настройки (создаётся автоматически)
 ├── setup.sh                # Скрипт установки
+├── custom/
+│   └── server_proxy.conf   # Подключается в каждый proxy host (см. «Свои конфиги NPM»)
 ├── scripts/
+│   ├── apply-custom.sh     # Ставит custom/*.conf в NPM и перезагружает nginx
 │   └── backup.sh           # Бэкап data/ и letsencrypt/
 ├── README.md               # Эта документация
 ├── data/                   # Данные NPM (создаётся автоматически)
