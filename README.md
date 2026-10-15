@@ -303,7 +303,13 @@ NPM подключает файлы из `data/nginx/custom/` в свои кон
   них мог бы сам выбрать адрес клиента;
 - стирает присланные клиентом заголовки `X-authentik-*`: их выставляют
   только SSO-сниппеты gatehouse, а custom location без `auth_request`
-  пропустил бы чужую копию в приложение.
+  пропустил бы чужую копию в приложение;
+- отдаёт HSTS (`max-age` два года, без `includeSubDomains`) на всех
+  HTTPS-ответах всех proxy hosts. Переключатель HSTS в интерфейсе NPM
+  держать выключенным: он работает через `add_header`, который nginx
+  отбрасывает в локациях SSO-сниппетов, а при включённом переключателе
+  заголовок придёт дважды. Значение по схеме задаёт `custom/http.conf`:
+  по HTTP заголовок не отдаётся.
 
 `custom/cloudflare_real_ip.conf` NPM сам не подключает: его включает строка
 `include /data/nginx/custom/cloudflare_real_ip.conf;` в Advanced хостов за
@@ -500,6 +506,7 @@ server-proxy-manager/
 ├── .env                    # Ваши настройки (создаётся автоматически)
 ├── setup.sh                # Скрипт установки
 ├── custom/
+│   ├── http.conf           # Подключается в блок http (значение HSTS)
 │   ├── server_proxy.conf   # Подключается в каждый proxy host (см. «Свои конфиги NPM»)
 │   └── cloudflare_real_ip.conf  # Адрес клиента за Cloudflare, include из Advanced
 ├── scripts/
