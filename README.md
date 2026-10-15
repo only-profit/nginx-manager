@@ -325,13 +325,25 @@ Cloudflare (`api.downloads.center`, `admin.downloads.center`). Адрес кли
 2. Нажмите на иконку пользователя → **Edit Details**
 3. Смените email и пароль
 
-### Регулярное обновление
+### Обновление NPM
+
+Версия образа закреплена в `docker-compose.yml`. Обновление пересоздаёт
+контейнер: все сайты недоступны несколько секунд, WebSocket-соединения
+рвутся. Делать в тихий час, перед этим прочитать заметки к релизу
+(https://github.com/NginxProxyManager/nginx-proxy-manager/releases): там
+бывают миграции базы и обновления certbot.
 
 ```bash
-cd /path/to/server-proxy-manager
+./scripts/backup.sh
+docker tag jc21/nginx-proxy-manager:<текущая> jc21/nginx-proxy-manager:rollback
+# сменить тег в docker-compose.yml
 docker compose pull
 docker compose up -d
 ```
+
+Откат: вернуть прежний тег в `docker-compose.yml` и `docker compose up -d`.
+Если новая версия мигрировала базу, сначала восстановить архив из
+`backup.sh` (см. «Бэкап»).
 
 ---
 
