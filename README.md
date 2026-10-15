@@ -305,6 +305,14 @@ NPM подключает файлы из `data/nginx/custom/` в свои кон
   только SSO-сниппеты gatehouse, а custom location без `auth_request`
   пропустил бы чужую копию в приложение.
 
+`custom/cloudflare_real_ip.conf` NPM сам не подключает: его включает строка
+`include /data/nginx/custom/cloudflare_real_ip.conf;` в Advanced хостов за
+Cloudflare (`api.downloads.center`, `admin.downloads.center`). Адрес клиента
+берётся из `CF-Connecting-IP`, только если запрос пришёл с адреса Cloudflare,
+и уходит в приложение как `X-Real-IP`. Без файла `nginx -t` не пройдёт, поэтому
+сначала `apply-custom.sh`, потом строка в Advanced. Диапазоны Cloudflare
+меняются редко; актуальный список — https://www.cloudflare.com/ips/.
+
 ### Смена пароля по умолчанию
 
 1. Войдите с `admin@example.com` / `changeme`
@@ -492,7 +500,8 @@ server-proxy-manager/
 ├── .env                    # Ваши настройки (создаётся автоматически)
 ├── setup.sh                # Скрипт установки
 ├── custom/
-│   └── server_proxy.conf   # Подключается в каждый proxy host (см. «Свои конфиги NPM»)
+│   ├── server_proxy.conf   # Подключается в каждый proxy host (см. «Свои конфиги NPM»)
+│   └── cloudflare_real_ip.conf  # Адрес клиента за Cloudflare, include из Advanced
 ├── scripts/
 │   ├── apply-custom.sh     # Ставит custom/*.conf в NPM и перезагружает nginx
 │   └── backup.sh           # Бэкап data/ и letsencrypt/
